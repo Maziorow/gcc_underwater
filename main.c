@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <complex.h>
+#include <sndfile.h>
 #include "dsp.h"
 #include "xfft_v9_1_bitacc_cmodel.h"
 
@@ -12,6 +13,35 @@ void rotate(cplx out[], cplx in[], int rot) {
         unsigned int j = (i+rot)%n;
         out[j] = in[i];
     }
+}
+
+int load_wav_data(const char *filename, cplx sig_ref[], int nsamps) {
+    SF_INFO sfinfo;
+    SNDFILE *file = sf_open(filename, SFM_READ, &sfinfo);
+    
+    if (!file) {
+        printf("Error opening WAV file: %s\n", sf_strerror(NULL));
+        return -1;
+    }
+
+    if (sfinfo.channels != 1) {
+        printf("Only mono WAV files are supported\n");
+        sf_close(file);
+        return -1;
+    }
+
+    float buffer[nsamps];
+    int frames = sf_readf_float(file, buffer, nsamps);
+    if (frames < nsamps) {
+        printf("Warning: Not enough samples in WAV file\n");
+    }
+
+    for (int i = 0; i < frames; i++) {
+        sig_ref[i] = buffer[i] + 0.0 * I; // Convert to complex numbers
+    }
+
+    sf_close(file);
+    return 0;
 }
 
 int main(void) {
